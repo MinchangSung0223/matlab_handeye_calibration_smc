@@ -78,20 +78,20 @@ if __name__ == "__main__":
 	tableId=p.loadURDF("shelfandtable/shelfandtable.urdf", [0, 0, 0.0])
 	
 	d435Id = p.loadURDF("d435/d435.urdf", [0, 0, 0.0])
-	p.resetBasePositionAndOrientation(d435Id, [0.7, 0.5, 0.5],p.getQuaternionFromEuler([0,-math.pi+math.pi/4,-math.pi/4]))
+	p.resetBasePositionAndOrientation(d435Id, [0.5, 0.5, 0.5],p.getQuaternionFromEuler([0,-math.pi,-math.pi/2]))
 
-	pandaId = p.loadURDF("Panda/panda.urdf", [0, 0, 0])
+	pandaId = p.loadURDF("Panda/panda_.urdf", [0, 0, 0])
 	p.resetBasePositionAndOrientation(pandaId, [0, 0, 0], [0, 0, 0, 1])
 	cid = p.createConstraint(tableId, -1, pandaId, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], [0., 0., 0],[0, 0, 0, 1])
 	x_Id = p.addUserDebugParameter("x", 0, 1, 0.4)
 	y_Id = p.addUserDebugParameter("y", -1, 1, 0.0)
 	z_Id = p.addUserDebugParameter("z", 0, 2, 0.589)
 	roll_Id = p.addUserDebugParameter("roll", -math.pi*2, math.pi*2, 0.0)
-	pitch_Id = p.addUserDebugParameter("pitch", -math.pi*2, math.pi*2, -math.pi)
+	pitch_Id = p.addUserDebugParameter("pitch", -math.pi*2, math.pi*2, -math.pi/2)
 	yaw_Id = p.addUserDebugParameter("yaw", -math.pi*2, math.pi*2, math.pi/2)
 
-	pandaEndEffectorIndex = 6
-	numJoints = 7	
+	pandaEndEffectorIndex = 7
+	numJoints = 7
 	t = 0
 	capture_count = 0;
 	save_count = 0;
@@ -99,6 +99,8 @@ if __name__ == "__main__":
 			p.resetJointState(pandaId, i, joint_states[i])
 	images_list = np.array([]);
 	poses_list = np.array([]);
+	poses2_list = np.array([]);
+	
 	jointPoses_list = np.array([]);
 	
 	while 1:
@@ -126,6 +128,15 @@ if __name__ == "__main__":
 		d435pos, d435orn = p.getBasePositionAndOrientation(d435Id)
 		d435quat = d435orn
 		d435orn =  p.getEulerFromQuaternion(d435orn)
+		T = np.eye(4)
+		
+		R = p.getMatrixFromQuaternion(d435quat)
+		T[0:3,0:3]=np.reshape(R,[3,3]);
+		T[0,3] = d435pos[0];
+		T[1,3] = d435pos[1];
+		T[2,3] = d435pos[2];
+		
+
 		for i in range(numJoints):
 			p.resetJointState(pandaId, i, jointPoses[i])
 		image = getCameraImage(d435pos,d435orn)
@@ -134,18 +145,64 @@ if __name__ == "__main__":
 		depth_img = far * near / (far - (far - near) * depth_img)
 		
 		color_img = image[2]
-		eef_pose = np.array([x,y,z,roll,pitch,yaw])
+		T = np.eye(4)
+		eef_pose = p.getLinkState(pandaId,pandaEndEffectorIndex)
+		eef_tvec = eef_pose[0];
+		R = p.getMatrixFromQuaternion(eef_pose[1])
+		T[0:3,0:3] = np.reshape(R,[3,3])
+		T[0,3] =eef_tvec[0]
+		T[1,3] =eef_tvec[1]
+		T[2,3] =eef_tvec[2]
+		eef_pose = T
+		eef_pose2 = p.getLinkState(pandaId,pandaEndEffectorIndex+2)
+		eef_tvec2 = eef_pose2[0];
+		T2 = np.eye(4);
+		R2 = p.getMatrixFromQuaternion(eef_pose2[1])
+		T2[0:3,0:3] = np.reshape(R2,[3,3])
+		T2[0,3] =eef_tvec2[0]
+		T2[1,3] =eef_tvec2[1]
+		T2[2,3] =eef_tvec2[2]
+		eef_pose2 = T2
+		
 		jointPoses = np.array(jointPoses)
 		if capture_count==3:
 			print(str(save_count)+"th image saved.")
+			
+			po = np.matmul(T2,np.array([0,0,0,1]).T)
+			px = np.matmul(T2,np.array([0.5,0,0,1]).T)
+			py = np.matmul(T2,np.array([0,0.5,0,1]).T)
+			pz = np.matmul(T2,np.array([0,0,0.5,1]).T)
+			x_color=np.array([1,0,0])
+			y_color=np.array([0,1,0])
+			z_color=np.array([0,0,1])
+			lineWidth = 1
+			lifeTime = 1
+			p.addUserDebugLine([po[0],po[1],po[2]], [px[0],px[1],px[2]], x_color, 1, 0)
+			p.addUserDebugLine([po[0],po[1],po[2]], [py[0],py[1],py[2]], y_color, 1, 0)
+			p.addUserDebugLine([po[0],po[1],po[2]], [pz[0],pz[1],pz[2]], z_color, 1, 0)				
+
+			po = np.matmul(T,np.array([0,0,0,1]).T)
+			px = np.matmul(T,np.array([0.5,0,0,1]).T)
+			py = np.matmul(T,np.array([0,0.5,0,1]).T)
+			pz = np.matmul(T,np.array([0,0,0.5,1]).T)
+			x_color=np.array([1,0,0])
+			y_color=np.array([0,1,0])
+			z_color=np.array([0,0,1])
+			lineWidth = 1
+			lifeTime = 1
+			p.addUserDebugLine([po[0],po[1],po[2]], [px[0],px[1],px[2]], x_color, 1, 0)
+			p.addUserDebugLine([po[0],po[1],po[2]], [py[0],py[1],py[2]], y_color, 1, 0)
+			p.addUserDebugLine([po[0],po[1],po[2]], [pz[0],pz[1],pz[2]], z_color, 1, 0)				
+
+
 			if save_count==0:
 				images_list=np.array(color_img,dtype=np.uint8);
 				s = color_img.shape
 				images_list = np.reshape(images_list,(s[0],s[1],s[2],1))
 
 				s2 = eef_pose.shape
-				poses_list = np.reshape(eef_pose,(s2[0],1))
-
+				poses_list = np.reshape(eef_pose,(s2[0],s2[1],1))
+				poses2_list = np.reshape(eef_pose2,(s2[0],s2[1],1))
 				s3 = jointPoses.shape
 				jointPoses_list = np.reshape(jointPoses,(s3[0],1))
 
@@ -156,12 +213,14 @@ if __name__ == "__main__":
 			s = color_img.shape
 			color_img = np.reshape(color_img,(s[0],s[1],s[2],1))
 			s2 = eef_pose.shape
-			eef_pose = np.reshape(eef_pose,(s2[0],1))
+			eef_pose = np.reshape(eef_pose,(s2[0],s2[1],1))
+			eef_pose2 = np.reshape(eef_pose2,(s2[0],s2[1],1))
 			s3 = jointPoses.shape
 			jointPoses = np.reshape(jointPoses,(s3[0],1))
 
 			images_list=np.append(images_list,color_img,axis=3);
-			poses_list=np.append(poses_list,eef_pose,axis=1);
+			poses_list=np.append(poses_list,eef_pose,axis=2);
+			poses2_list=np.append(poses2_list,eef_pose2,axis=2);			
 			jointPoses_list=np.append(jointPoses_list,jointPoses,axis=1);
 
 
@@ -176,7 +235,7 @@ if __name__ == "__main__":
 			#save_count = save_count+1;
 			capture_count=0;
 		if key==65309:
-			savedic = {"image": images_list, "pose": poses_list,"jointPoses":jointPoses_list}
+			savedic = {"image": images_list, "pose": poses_list,"pose2":poses2_list,"jointPoses":jointPoses_list}
 			savemat("./matlab_files/data.mat", savedic)
 			break;
 			

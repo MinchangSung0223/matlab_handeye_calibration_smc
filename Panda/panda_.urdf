@@ -218,7 +218,7 @@
    <joint name="panda_calibration" type="fixed">
     <parent link="panda_hand"/>
     <child link="panda_calibration"/>
-    <origin rpy="-1.57079632679 0 3.141592" xyz="0 -0.15 0"/>
+    <origin rpy="0 0 0" xyz="0 -0.2 0"/>
   </joint>
   
   <material name="panda_white">

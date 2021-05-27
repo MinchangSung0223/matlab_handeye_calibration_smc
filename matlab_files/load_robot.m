@@ -9,9 +9,10 @@ config = homeconfig;
 for j =1 :1:7
     config(j).JointPosition = jointPoses(j,i)
 end
-T = getTransform(robot,config,"panda_hand")
+T = getTransform(robot,config,"panda_link0","panda_link8")
 Tbe(:,:,i) =T;
 show(robot,config)
 drawnow;
+hold on;
 end
 save data.mat
